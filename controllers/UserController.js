@@ -143,6 +143,8 @@ module.exports = class UserController {
 
         let image = ' '
 
+        if(req.file) user.image = req.file.filename
+
         if (!name) {
             res.status(422).json({ message: 'O campo nome é obrigatório' })
             return
