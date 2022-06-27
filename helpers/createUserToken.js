@@ -8,7 +8,7 @@ const createUserToken = async (user, req, res) => {
     },"nossosecret")
 
     // return token
-    res.status(200).send(`Você está autenticado! ${token}`)
+    res.status(200).send(`Usuário cadastrado com sucesso! ${token}`)
 }
 
 module.exports = createUserToken

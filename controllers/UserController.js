@@ -131,46 +131,19 @@ module.exports = class UserController {
         }
     }
 
-
-
     static async editUser(req, res) {
-        const id = req.params.id
+        req.params.id
 
         const token = getToken(req)
         const user = await getUserByToken(token)
 
-        const { name, email, password, phone, confirmpassword } = req.body
+        const { name, password, phone, confirmpassword } = req.body
 
         let image = ' '
 
         if(req.file) user.image = req.file.filename
 
-        if (!name) {
-            res.status(422).json({ message: 'O campo nome é obrigatório' })
-            return
-        }
-
         user.name = name
-
-        if (!email) {
-            res.status(422).json({ message: 'O campo e-mail é obrigatório' })
-            return
-        }
-
-        const userExists = await User.findOne({ email: email })
-
-        if (user.email !== email && userExists) {
-            res.status(422).json({ message: 'Utilize outro e-mail' })
-            return
-        }
-
-        user.email = email
-
-        if (!phone) {
-            res.status(422).json({ message: 'O campo telefone é obrigatório' })
-            return
-        }
-
         user.phone = phone
 
         if (password !== confirmpassword) {
