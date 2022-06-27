@@ -1,6 +1,9 @@
 const User = require('../models/User')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 const createUserToken = require('../helpers/createUserToken')
+const getToken = require('../helpers/getToken')
+const getUserByToken = require('../helpers/getUserByToken')
 
 module.exports = class UserController {
     static async register(req, res) {
@@ -16,13 +19,13 @@ module.exports = class UserController {
             return
         }
 
-        if (!password) {
-            res.status(422).json({ message: 'A senha é obrigatória' })
+        if (!phone) {
+            res.status(422).json({ message: 'O campo telefone é obrigatório' })
             return
         }
 
-        if (!phone) {
-            res.status(422).json({ message: 'O campo telefone é obrigatório' })
+        if (!password) {
+            res.status(422).json({ message: 'A senha é obrigatória' })
             return
         }
 
@@ -98,13 +101,98 @@ module.exports = class UserController {
         await createUserToken(user, req, res)
     }
 
-    static async checkUser(req,res) {
+    static async checkUser(req, res) {
         let currentUser
 
-        console.log(req.headers.authorization)
+        if (req.headers.authorization) {
+            const token = getToken(req)
+            const decoded = jwt.verify(token, 'nossosecret')
 
-        req.headers.authorization ? " " : currentUser = null
+            currentUser = await User.findById(decoded.id)
+
+            currentUser.password = undefined
+        } else {
+            currentUser = null
+        }
 
         res.status(200).send(currentUser)
+    }
+
+    static async getUserById(req, res) {
+        const id = req.params.id
+
+        const user = await User.findById(id)
+
+        if (!user) {
+            res.status(422).send('Usuário não encontrado!')
+            return
+        } else {
+            res.status(200).json({ user })
+        }
+    }
+
+
+
+    static async editUser(req, res) {
+        const id = req.params.id
+
+        const token = getToken(req)
+        const user = await getUserByToken(token)
+
+        const { name, email, password, phone, confirmpassword } = req.body
+
+        let image = ' '
+
+        if (!name) {
+            res.status(422).json({ message: 'O campo nome é obrigatório' })
+            return
+        }
+
+        user.name = name
+
+        if (!email) {
+            res.status(422).json({ message: 'O campo e-mail é obrigatório' })
+            return
+        }
+
+        const userExists = await User.findOne({ email: email })
+
+        if (user.email !== email && userExists) {
+            res.status(422).json({ message: 'Utilize outro e-mail' })
+            return
+        }
+
+        user.email = email
+
+        if (!phone) {
+            res.status(422).json({ message: 'O campo telefone é obrigatório' })
+            return
+        }
+
+        user.phone = phone
+
+        if (password !== confirmpassword) {
+            res.status(422).json({ message: 'O campo senha e confirmação de senha precisam ser iguais' })
+            return
+        } else if (password === confirmpassword && password != null) {
+
+            const salt = await bcrypt.genSalt(12)
+            const passwordHash = await bcrypt.hash(password, salt)
+
+            user.passwordHash = passwordHash
+        }
+
+        try {
+            await User.findOneAndUpdate(
+                { _id: user._id },
+                { $set: user },
+                { new: true },
+            )
+
+            res.status(200).send('Usuário atualizado com sucesso!')
+        } catch (error) {
+            res.staus(500).console.log(error)
+            return
+        }
     }
 }

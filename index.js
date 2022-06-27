@@ -10,7 +10,5 @@ app.use(express.static('public'))
 
 const UserRouters = require('./routers/UserRouters')
 app.use('/users', UserRouters)
-app.use('/login', UserRouters)
-app.use('/checkuser', UserRouters)
 
 app.listen(5000)
