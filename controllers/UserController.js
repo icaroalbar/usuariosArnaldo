@@ -1,6 +1,7 @@
 const User = require('../models/User')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+
 const createUserToken = require('../helpers/createUserToken')
 const getToken = require('../helpers/getToken')
 const getUserByToken = require('../helpers/getUserByToken')
@@ -139,29 +140,35 @@ module.exports = class UserController {
 
         const { name, password, phone, confirmpassword } = req.body
 
-        let image = ' '
+        let image = ''
 
-        if(req.file) user.image = req.file.filename
+        if (req.file) {
+          image = req.file.filename
+        }
 
         user.name = name
         user.phone = phone
 
+        if (image) {
+            const imageName = req.file.filename
+            user.image = imageName
+          }
+
         if (password !== confirmpassword) {
             res.status(422).json({ message: 'O campo senha e confirmação de senha precisam ser iguais' })
-            return
         } else if (password === confirmpassword && password != null) {
 
             const salt = await bcrypt.genSalt(12)
             const passwordHash = await bcrypt.hash(password, salt)
 
-            user.passwordHash = passwordHash
+            user.password = passwordHash
         }
 
         try {
             await User.findOneAndUpdate(
-                { _id: user._id },
+                { _id : user._id },
                 { $set: user },
-                { new: true },
+                { new : true }
             )
 
             res.status(200).send('Usuário atualizado com sucesso!')

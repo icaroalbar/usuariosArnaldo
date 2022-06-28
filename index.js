@@ -8,7 +8,7 @@ app.use(cors({credentials: true, origin: "http://localhost:3000"}))
 
 app.use(express.static('public'))
 
-const UserRouters = require('./routers/UserRouters')
+const UserRouters = require('./router')
 app.use('/users', UserRouters)
 
 app.listen(5000)
