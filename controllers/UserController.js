@@ -6,6 +6,7 @@ const crypto = require('crypto')
 const createUserToken = require('../helpers/createUserToken')
 const getToken = require('../helpers/getToken')
 const getUserByToken = require('../helpers/getUserByToken')
+const mailer = require('./mailer')
 
 module.exports = class UserController {
     static async register(req, res) {
@@ -199,9 +200,20 @@ module.exports = class UserController {
                 }
             })
 
+            await mailer.sendMail({
+                from: '"Suporte Arnaldo" <contato@astrocrypto.com.br>', 
+                to: `${email}`, 
+                subject: "Recuperação de senha", 
+                text: `Token ${token}`, 
+                html: `<b>Token: </b>${token}<br>`,
+            }, erro => {
+                if (erro) return res.status(400).send('erro')            
+            })
+
+            res.send('enviado')
+
         } catch (error) {
             console.log(error)
-            res.status(400).send("Erro no sistema")
         }
     }
 
@@ -236,7 +248,7 @@ module.exports = class UserController {
 
             await user.save()
 
-            res.send()
+            res.send('Senha alterada com sucesso!')
 
         } catch (error) {
             res.status(400).res.send("Erro password.")
