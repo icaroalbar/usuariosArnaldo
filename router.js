@@ -8,5 +8,7 @@ router.post('/login', UserController.login)
 router.get('/checkuser', UserController.checkUser)
 router.get('/checkuser/:id', UserController.getUserById)
 router.patch('/edit/:id', verifyToken, imageUpload.single('image'), UserController.editUser)
+router.post('/forgot', UserController.forgotPassword)
+router.post('/forgot/reset', UserController.resetPassword)
 
 module.exports = router

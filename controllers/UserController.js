@@ -1,10 +1,13 @@
 const User = require('../models/User')
+const TokenUsed = require('../models/TokensUsed')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 
 const createUserToken = require('../helpers/createUserToken')
 const getToken = require('../helpers/getToken')
 const getUserByToken = require('../helpers/getUserByToken')
+const mailer = require('./mailer')
 
 module.exports = class UserController {
     static async register(req, res) {
@@ -47,11 +50,9 @@ module.exports = class UserController {
             return
         }
 
-        // create a password
         const salt = await bcrypt.genSalt(12)
         const passwordHash = await bcrypt.hash(password, salt)
 
-        // create a user
         const user = new User({
             name,
             email,
@@ -143,7 +144,7 @@ module.exports = class UserController {
         let image = ''
 
         if (req.file) {
-          image = req.file.filename
+            image = req.file.filename
         }
 
         user.name = name
@@ -152,7 +153,7 @@ module.exports = class UserController {
         if (image) {
             const imageName = req.file.filename
             user.image = imageName
-          }
+        }
 
         if (password !== confirmpassword) {
             res.status(422).json({ message: 'O campo senha e confirmação de senha precisam ser iguais' })
@@ -166,15 +167,106 @@ module.exports = class UserController {
 
         try {
             await User.findOneAndUpdate(
-                { _id : user._id },
+                { _id: user._id },
                 { $set: user },
-                { new : true }
+                { new: true }
             )
 
             res.status(200).send('Usuário atualizado com sucesso!')
         } catch (error) {
             res.staus(500).console.log(error)
             return
+        }
+    }
+
+    static async forgotPassword(req, res) {
+        const { email } = req.body
+
+        try {
+            const user = await User.findOne({ email })
+            if (!user) {
+                res.status(422).send('Não há usuário cadastrado com esse e-mail')
+                return
+            }
+
+            const token = crypto.randomBytes(20).toString('hex')
+
+            const now = new Date()
+            now.setMinutes(now.getMinutes() + 20)
+
+            await User.findByIdAndUpdate(user.id, {
+                '$set': {
+                    passwordResetToken: token,
+                    passwordResetExpires: now,
+                }
+            })
+
+            await mailer.sendMail({
+                from: '"Suporte Arnaldo" <contato@astrocrypto.com.br>',
+                to: `${email}`,
+                subject: "Recuperação de senha",
+                text: `Token ${token}`,
+                html: `<b>Token: </b>${token}<br>`,
+            }, erro => {
+                if (erro) return res.status(400).send('erro')
+            })
+
+            res.send('enviado')
+
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    static async resetPassword(req, res) {
+        const { email, token, password } = req.body
+
+        try {
+            const user = await User.findOne({ email })
+                .select('+passwordResetToken passwordResetExpires')
+
+            const tokenBanco = await TokenUsed.findOne({ 'tokenUsado': token })
+
+            if (tokenBanco) {
+                res.status(422).send('Token expirado')
+                return
+            }
+
+            if (!user) {
+                res.status(422).send('Não há usuário cadastrado com esse e-mail')
+                return
+            }
+
+            if (token !== user.passwordResetToken) {
+                res.status(422).send('Token inválido')
+                return
+            }
+
+            const now = new Date()
+
+            if (now > user.passwordResetExpires) {
+                res.status(422).send('Token expirado')
+                return
+            }
+
+            const salt = await bcrypt.genSalt(12)
+            const passwordHash = await bcrypt.hash(password, salt)
+
+            user.password = passwordHash
+
+            const tokenRecuperacao = new TokenUsed({
+                tokenUsado: token
+            })
+
+            tokenRecuperacao.tokenUsado = token
+
+            await user.save()
+            await tokenRecuperacao.save()
+
+            res.send('Senha alterada com sucesso!')
+
+        } catch (error) {
+            res.status(400).send("Erro password.")
         }
     }
 }

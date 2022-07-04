@@ -17,6 +17,14 @@ const User = mongoose.model(
                 type: String,
                 required: true
             },
+            passwordResetToken: {
+                type: String,
+                select: false,
+            },
+            passwordResetExpires: {
+                type: Date,
+                select: false,
+            },
             phone: {
                 type: String,
                 required: true
